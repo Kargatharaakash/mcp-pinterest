@@ -905,8 +905,8 @@ export class PinterestMcpServer {
       });
     });
 
-    // Protected SSE Endpoint
-    app.get('/sse', (req: Request, res: Response, next: NextFunction) => {
+    // Unified MCP Endpoint (ChatGPT Apps SDK & Spec Compliant)
+    app.get(['/mcp', '/sse'], (req: Request, res: Response, next: NextFunction) => {
       res.setHeader('X-Accel-Buffering', 'no');
       res.setHeader('Cache-Control', 'no-cache, no-transform');
       res.setHeader('Connection', 'keep-alive');
@@ -918,7 +918,7 @@ export class PinterestMcpServer {
         const baseUrl = `${protocol}://${host}`;
         
         const apiKeyQuery = req.query.api_key ? `?api_key=${encodeURIComponent(req.query.api_key as string)}` : '';
-        const messagesEndpoint = `${baseUrl}/messages${apiKeyQuery}`;
+        const messagesEndpoint = `${baseUrl}/mcp${apiKeyQuery}`;
 
         const transport = new SSEServerTransport(messagesEndpoint, res);
         this.sseTransports.set(transport.sessionId, transport);
@@ -931,8 +931,8 @@ export class PinterestMcpServer {
       });
     });
 
-    // Messages Endpoint (Session verified via active SSE transport)
-    app.post('/messages', async (req: Request, res: Response, next: NextFunction) => {
+    // Unified POST Handler for Messages & MCP JSON-RPC
+    app.post(['/mcp', '/messages'], async (req: Request, res: Response, next: NextFunction) => {
       const sessionId = req.query.sessionId as string;
       let transport: SSEServerTransport | undefined;
       

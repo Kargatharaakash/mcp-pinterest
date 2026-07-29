@@ -919,25 +919,23 @@ export class PinterestMcpServer {
       });
     });
 
-    // Protected Messages Endpoint
-    app.post('/messages', (req: Request, res: Response, next: NextFunction) => {
-      this.authenticateMiddleware(req, res, async () => {
-        const sessionId = req.query.sessionId as string;
-        let transport: SSEServerTransport | undefined;
-        
-        if (sessionId) {
-          transport = this.sseTransports.get(sessionId);
-        } else {
-          transport = this.sseTransports.values().next().value;
-        }
+    // Messages Endpoint (Session verified via active SSE transport)
+    app.post('/messages', async (req: Request, res: Response, next: NextFunction) => {
+      const sessionId = req.query.sessionId as string;
+      let transport: SSEServerTransport | undefined;
+      
+      if (sessionId) {
+        transport = this.sseTransports.get(sessionId);
+      } else {
+        transport = this.sseTransports.values().next().value;
+      }
 
-        if (!transport) {
-          res.status(400).json({ error: 'Active SSE connection session not found' });
-          return;
-        }
+      if (!transport) {
+        res.status(400).json({ error: 'Active SSE connection session not found' });
+        return;
+      }
 
-        await transport.handlePostMessage(req, res);
-      });
+      await transport.handlePostMessage(req, res);
     });
 
     app.listen(port, () => {

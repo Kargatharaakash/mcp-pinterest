@@ -1,25 +1,21 @@
 /**
- * 端到端测试
- * 测试完整的Pinterest MCP Server流程
+ * End-to-End test suite for Pinterest MCP Server
  */
-import { jest, describe, expect, test, beforeEach, afterEach } from '@jest/globals';
-import fs from 'fs';
-import path from 'path';
+import { jest, describe, expect, test } from '@jest/globals';
 
-// 模拟文件系统
 jest.mock('fs', () => {
   return {
-    ...jest.requireActual('fs'),
+    ...jest.requireActual('fs') as any,
     promises: {
-      mkdir: jest.fn().mockResolvedValue(undefined),
-      writeFile: jest.fn().mockResolvedValue(undefined)
+      mkdir: jest.fn().mockResolvedValue(undefined as never),
+      writeFile: jest.fn().mockResolvedValue(undefined as never)
     },
     existsSync: jest.fn().mockReturnValue(true)
   };
 });
 
-describe('Pinterest MCP Server 端到端测试', () => {
-  test('基本测试通过', () => {
+describe('Pinterest MCP Server E2E Test Suite', () => {
+  test('should pass basic e2e setup check', () => {
     expect(true).toBe(true);
   });
-}); 
+});

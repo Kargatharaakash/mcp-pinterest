@@ -1,7 +1,7 @@
 import { describe, expect, test } from '@jest/globals';
 
-describe('基本测试', () => {
-  test('应该通过简单测试', () => {
+describe('Basic Test Suite', () => {
+  test('should pass simple truthy test', () => {
     expect(1 + 1).toBe(2);
   });
-}); 
+});

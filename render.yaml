@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: pinterest-mcp-server
+    runtime: docker
+    plan: free
+    region: oregon
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: API_KEY
+        generateValue: true
+      - key: MCP_PINTEREST_DOWNLOAD_DIR
+        value: /tmp/downloads
+    healthCheckPath: /health

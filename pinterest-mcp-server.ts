@@ -441,57 +441,26 @@ export class PinterestMcpServer {
       
       for (const result of validResults) {
         if (result.image_url) {
-          const thumbnailPatterns = ['/60x60/', '/236x/', '/474x/', '/736x/'];
-          let needsFix = false;
-          
-          for (const pattern of thumbnailPatterns) {
-            if (result.image_url.includes(pattern)) {
-              needsFix = true;
-              break;
-            }
-          }
-          
-          if (!needsFix && result.image_url.match(/\/\d+x\d*\//)) {
-            needsFix = true;
-          }
-          
-          if (needsFix) {
-            result.image_url = result.image_url.replace(/\/\d+x\d*\//, '/originals/');
-          }
+          result.image_url = this.scraper.transformImageUrl(result.image_url);
         }
       }
       
       const contentItems: Array<{type: string; text: string}> = [
         {
           type: 'text',
-          text: `Found ${validResults.length} images related to "${keyword}" on Pinterest`
+          text: `Found ${validResults.length} images related to "${keyword}" on Pinterest:`
         }
       ];
       
-      validResults.forEach((result, index) => {
-        contentItems.push({
-          type: 'text',
-          text: `Image ${index + 1}: ${result.title || 'No title'}`
-        });
+      validResults.forEach((result: any, index: number) => {
+        const title = result.title && result.title !== 'Unknown Title' ? result.title : `Design ${index + 1}`;
+        const imageMarkdown = `![${title}](${result.image_url})`;
+        const pinLink = result.link || result.original_page || result.image_url;
         
         contentItems.push({
           type: 'text',
-          text: `Link: ${result.image_url || 'No link'}`
+          text: `#### ${index + 1}. ${title}\n${imageMarkdown}\n[View Image](${result.image_url}) | [View Pin](${pinLink})\n---`
         });
-        
-        if (result.link && result.link !== result.image_url) {
-          contentItems.push({
-            type: 'text',
-            text: `Original page: ${result.link}`
-          });
-        }
-        
-        if (index < validResults.length - 1) {
-          contentItems.push({
-            type: 'text',
-            text: `---`
-          });
-        }
       });
       
       return {
@@ -796,27 +765,14 @@ export class PinterestMcpServer {
       ];
 
       results.forEach((item: any, index: number) => {
+        const title = item.title && item.title !== 'Unknown Title' ? item.title : `Recommendation ${index + 1}`;
+        const imageUrl = this.scraper.transformImageUrl(item.image_url);
+        const imageMarkdown = `![${title}](${imageUrl})`;
+        
         contentItems.push({
           type: 'text',
-          text: `Recommendation ${index + 1}: ${item.title || 'Related Pin'}`
+          text: `#### ${index + 1}. ${title}\n${imageMarkdown}\n[View Image](${imageUrl}) | [View Pin](${item.link || imageUrl})\n---`
         });
-
-        contentItems.push({
-          type: 'text',
-          text: `Image URL: ${item.image_url}`
-        });
-
-        contentItems.push({
-          type: 'text',
-          text: `Pin Link: ${item.link}`
-        });
-
-        if (index < results.length - 1) {
-          contentItems.push({
-            type: 'text',
-            text: `---`
-          });
-        }
       });
 
       return {

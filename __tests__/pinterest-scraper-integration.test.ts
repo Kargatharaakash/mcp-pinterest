@@ -253,7 +253,7 @@ describe('PinterestScraper集成测试', () => {
       
       for (const url of urls) {
         const transformedUrl = scraper.transformImageUrl(url);
-        expect(transformedUrl).toBe('https://i.pinimg.com/originals/ab/cd/ef.jpg');
+        expect(transformedUrl).toBe('https://i.pinimg.com/736x/ab/cd/ef.jpg');
       }
     });
     

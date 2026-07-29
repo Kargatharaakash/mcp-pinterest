@@ -521,14 +521,15 @@ class PinterestScraper {
   transformImageUrl(url) {
     if (!url) return url;
 
+    // Convert small thumbnails (60x60, 236x, 474x) to /736x/ high-resolution public CDN URL (prevents AccessDenied S3 errors)
     if (url.match(/\/\d+x\d*\//)) {
-      return url.replace(/\/\d+x\d*\//, '/originals/');
+      return url.replace(/\/\d+x\d*\//, '/736x/');
     }
 
-    const thumbnailPatterns = ['/60x60/', '/236x/', '/474x/', '/736x/'];
+    const thumbnailPatterns = ['/60x60/', '/236x/', '/474x/'];
     for (const pattern of thumbnailPatterns) {
       if (url.includes(pattern)) {
-        return url.replace(pattern, '/originals/');
+        return url.replace(pattern, '/736x/');
       }
     }
 

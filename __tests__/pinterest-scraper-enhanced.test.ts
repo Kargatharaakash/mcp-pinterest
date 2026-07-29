@@ -202,11 +202,11 @@ describe('Enhanced PinterestScraper Test Suite', () => {
 
   describe('transformImageUrl Method', () => {
     it('should convert thumbnail URLs to original resolution', () => {
-      expect(scraper.transformImageUrl('https://i.pinimg.com/236x/test.jpg')).toBe('https://i.pinimg.com/originals/test.jpg');
+      expect(scraper.transformImageUrl('https://i.pinimg.com/236x/test.jpg')).toBe('https://i.pinimg.com/736x/test.jpg');
     });
 
     it('should handle custom dimensions', () => {
-      expect(scraper.transformImageUrl('https://i.pinimg.com/150x150/test.jpg')).toBe('https://i.pinimg.com/originals/test.jpg');
+      expect(scraper.transformImageUrl('https://i.pinimg.com/150x150/test.jpg')).toBe('https://i.pinimg.com/736x/test.jpg');
     });
 
     it('should preserve original image URLs', () => {

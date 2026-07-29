@@ -284,23 +284,14 @@ describe('PinterestScraper Code Coverage Tests', () => {
   });
   
   describe('transformImageUrl method', () => {
-    it('should transform thumbnail URL to original size', () => {
+    it('should transform thumbnail URL to 736x size', () => {
       expect(scraper.transformImageUrl('https://i.pinimg.com/236x/ab/cd/ef.jpg'))
-        .toBe('https://i.pinimg.com/originals/ab/cd/ef.jpg');
-      
-      expect(scraper.transformImageUrl('https://i.pinimg.com/474x/ab/cd/ef.jpg'))
-        .toBe('https://i.pinimg.com/originals/ab/cd/ef.jpg');
-        
-      expect(scraper.transformImageUrl('https://i.pinimg.com/60x60/ab/cd/ef.jpg'))
-        .toBe('https://i.pinimg.com/originals/ab/cd/ef.jpg');
-        
-      expect(scraper.transformImageUrl('https://i.pinimg.com/736x/ab/cd/ef.jpg'))
-        .toBe('https://i.pinimg.com/originals/ab/cd/ef.jpg');
+        .toBe('https://i.pinimg.com/736x/ab/cd/ef.jpg');
     });
-    
+
     it('should handle custom size formats', () => {
       expect(scraper.transformImageUrl('https://i.pinimg.com/123x456/ab/cd/ef.jpg'))
-        .toBe('https://i.pinimg.com/originals/ab/cd/ef.jpg');
+        .toBe('https://i.pinimg.com/736x/ab/cd/ef.jpg');
     });
     
     it('should keep non-thumbnail URLs unchanged', () => {

@@ -42,7 +42,9 @@ const DEFAULT_DOWNLOAD_DIR = path.join(__dirname, '../downloads');
 const ENV_FILENAME_TEMPLATE = process.env.MCP_PINTEREST_FILENAME_TEMPLATE;
 
 // API key for authenticating remote requests (Render / Fly / Railway / Claude Remote MCP)
-const API_KEY = process.env.API_KEY || process.env.MCP_API_KEY || '';
+function getApiKey(): string {
+  return process.env.API_KEY || process.env.MCP_API_KEY || '';
+}
 
 // Validate download directory accessibility
 function validateDownloadDirectory(dirPath: string): boolean {
@@ -311,7 +313,7 @@ export class PinterestMcpServer {
       version: '1.2.0',
       uptimeSeconds,
       timestamp: new Date().toISOString(),
-      authenticationEnabled: !!(process.env.API_KEY || process.env.MCP_API_KEY || API_KEY),
+      authenticationEnabled: !!getApiKey(),
       downloadDirectory: {
         path: CURRENT_DOWNLOAD_DIR,
         writable: isWritable
@@ -830,7 +832,7 @@ export class PinterestMcpServer {
    * Middleware to enforce API key security for HTTP requests
    */
   private authenticateMiddleware(req: Request, res: Response, next: NextFunction): void {
-    const activeApiKey = process.env.API_KEY || process.env.MCP_API_KEY || API_KEY;
+    const activeApiKey = getApiKey();
     if (!activeApiKey) {
       return next();
     }
@@ -887,7 +889,7 @@ export class PinterestMcpServer {
         service: 'pinterest-mcp-server',
         version: '1.2.0',
         transport: 'sse',
-        authenticated: !!(process.env.API_KEY || process.env.MCP_API_KEY || API_KEY),
+        authenticated: !!getApiKey(),
         uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
         activeSseSessions: this.sseTransports.size,
         memoryUsageMB: {
@@ -935,7 +937,7 @@ export class PinterestMcpServer {
 
     app.listen(port, () => {
       console.log(`🚀 Pinterest MCP Server listening in SSE mode on port ${port}`);
-      if (API_KEY) {
+      if (getApiKey()) {
         console.log('🔒 API Key authentication is ENABLED');
       } else {
         console.log('⚠️ Warning: API Key authentication is DISABLED (set API_KEY or MCP_API_KEY env var to secure)');

@@ -476,26 +476,37 @@ export class PinterestMcpServer {
         }
       ];
       
-      for (let index = 0; index < validResults.length; index++) {
-        const result = validResults[index];
+      const imagePromises = validResults.map(async (result: any, index: number) => {
         const title = result.title && result.title !== 'Unknown Title' ? result.title : `Design ${index + 1}`;
         const rawImageUrl = this.scraper.transformImageUrl(result.image_url);
         const proxiedImageUrl = `https://pinterest-mcp-server-62kx.onrender.com/image-proxy?url=${encodeURIComponent(rawImageUrl)}`;
         const pinLink = result.link || result.original_page || rawImageUrl;
-        
-        // Fetch base64 for native MCP type: "image" rendering in ChatGPT UI
         const imageBase64 = await this.fetchImageAsBase64(rawImageUrl);
-        if (imageBase64) {
+
+        return {
+          index,
+          title,
+          rawImageUrl,
+          proxiedImageUrl,
+          pinLink,
+          imageBase64
+        };
+      });
+
+      const processedResults = await Promise.all(imagePromises);
+
+      for (const item of processedResults) {
+        if (item.imageBase64) {
           contentItems.push({
             type: 'image',
-            data: imageBase64.data,
-            mimeType: imageBase64.mimeType
+            data: item.imageBase64.data,
+            mimeType: item.imageBase64.mimeType
           });
         }
 
         contentItems.push({
           type: 'text',
-          text: `#### ${index + 1}. ${title}\n![${title}](${proxiedImageUrl})\n[View Direct Image](${rawImageUrl}) | [View Pin](${pinLink})\n---`
+          text: `#### ${item.index + 1}. ${item.title}\n![${item.title}](${item.proxiedImageUrl})\n[View Direct Image](${item.rawImageUrl}) | [View Pin](${item.pinLink})\n---`
         });
       }
       
@@ -804,24 +815,36 @@ export class PinterestMcpServer {
         }
       ];
 
-      for (let index = 0; index < results.length; index++) {
-        const item = results[index];
+      const imagePromises = results.map(async (item: any, index: number) => {
         const title = item.title && item.title !== 'Unknown Title' ? item.title : `Recommendation ${index + 1}`;
         const rawImageUrl = this.scraper.transformImageUrl(item.image_url);
         const proxiedImageUrl = `https://pinterest-mcp-server-62kx.onrender.com/image-proxy?url=${encodeURIComponent(rawImageUrl)}`;
-
         const imageBase64 = await this.fetchImageAsBase64(rawImageUrl);
-        if (imageBase64) {
+
+        return {
+          index,
+          title,
+          rawImageUrl,
+          proxiedImageUrl,
+          pinLink: item.link || rawImageUrl,
+          imageBase64
+        };
+      });
+
+      const processedResults = await Promise.all(imagePromises);
+
+      for (const item of processedResults) {
+        if (item.imageBase64) {
           contentItems.push({
             type: 'image',
-            data: imageBase64.data,
-            mimeType: imageBase64.mimeType
+            data: item.imageBase64.data,
+            mimeType: item.imageBase64.mimeType
           });
         }
 
         contentItems.push({
           type: 'text',
-          text: `#### ${index + 1}. ${title}\n![${title}](${proxiedImageUrl})\n[View Direct Image](${rawImageUrl}) | [View Pin](${item.link || rawImageUrl})\n---`
+          text: `#### ${item.index + 1}. ${item.title}\n![${item.title}](${item.proxiedImageUrl})\n[View Direct Image](${item.rawImageUrl}) | [View Pin](${item.pinLink})\n---`
         });
       }
 

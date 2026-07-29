@@ -311,7 +311,7 @@ export class PinterestMcpServer {
       version: '1.2.0',
       uptimeSeconds,
       timestamp: new Date().toISOString(),
-      authenticationEnabled: !!API_KEY,
+      authenticationEnabled: !!(process.env.API_KEY || process.env.MCP_API_KEY || API_KEY),
       downloadDirectory: {
         path: CURRENT_DOWNLOAD_DIR,
         writable: isWritable
@@ -830,7 +830,8 @@ export class PinterestMcpServer {
    * Middleware to enforce API key security for HTTP requests
    */
   private authenticateMiddleware(req: Request, res: Response, next: NextFunction): void {
-    if (!API_KEY) {
+    const activeApiKey = process.env.API_KEY || process.env.MCP_API_KEY || API_KEY;
+    if (!activeApiKey) {
       return next();
     }
 
@@ -852,7 +853,7 @@ export class PinterestMcpServer {
       providedKey = queryApiKey.trim();
     }
 
-    if (providedKey === API_KEY) {
+    if (providedKey === activeApiKey) {
       return next();
     }
 
@@ -886,7 +887,7 @@ export class PinterestMcpServer {
         service: 'pinterest-mcp-server',
         version: '1.2.0',
         transport: 'sse',
-        authenticated: !!API_KEY,
+        authenticated: !!(process.env.API_KEY || process.env.MCP_API_KEY || API_KEY),
         uptimeSeconds: Math.floor((Date.now() - SERVER_START_TIME) / 1000),
         activeSseSessions: this.sseTransports.size,
         memoryUsageMB: {

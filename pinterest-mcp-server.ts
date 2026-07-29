@@ -942,12 +942,94 @@ export class PinterestMcpServer {
         transport = this.sseTransports.values().next().value;
       }
 
-      if (!transport) {
-        res.status(400).json({ error: 'Active SSE connection session not found' });
+      if (transport) {
+        await transport.handlePostMessage(req, res);
         return;
       }
 
-      await transport.handlePostMessage(req, res);
+      // Stateless HTTP JSON-RPC fallback for direct POST /mcp probes
+      if (req.body && req.body.jsonrpc === '2.0') {
+        const { method, id } = req.body;
+        if (method === 'initialize') {
+          res.json({
+            jsonrpc: '2.0',
+            id: id ?? 1,
+            result: {
+              protocolVersion: '2024-11-05',
+              capabilities: { tools: {} },
+              serverInfo: { name: 'pinterest-mcp-server', version: '1.2.0' }
+            }
+          });
+          return;
+        } else if (method === 'tools/list') {
+          res.json({
+            jsonrpc: '2.0',
+            id: id ?? 2,
+            result: {
+              tools: [
+                {
+                  name: 'pinterest_health_check',
+                  description: 'System metrics, memory usage, Chromium binary status, and write diagnostics',
+                  inputSchema: { type: 'object', properties: {} }
+                },
+                {
+                  name: 'pinterest_search',
+                  description: 'Search for images on Pinterest by keyword with persistent browser pool',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      keyword: { type: 'string', description: 'Search term' },
+                      limit: { type: 'number', description: 'Number of images to return' }
+                    },
+                    required: ['keyword']
+                  }
+                },
+                {
+                  name: 'pinterest_get_similar_pins',
+                  description: 'Deep visual recommendation engine for a target Pin URL or Pin ID',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      pin_url_or_id: { type: 'string', description: 'Pinterest Pin URL or numeric Pin ID' },
+                      limit: { type: 'number', description: 'Number of recommended pins' }
+                    },
+                    required: ['pin_url_or_id']
+                  }
+                },
+                {
+                  name: 'pinterest_get_image_info',
+                  description: 'Retrieve detailed information for a Pinterest image',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      image_url: { type: 'string', description: 'Image URL' }
+                    },
+                    required: ['image_url']
+                  }
+                },
+                {
+                  name: 'pinterest_search_and_download',
+                  description: 'Search and download Pinterest images directly to disk',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      keyword: { type: 'string', description: 'Search term' },
+                      limit: { type: 'number', description: 'Number of images' }
+                    },
+                    required: ['keyword']
+                  }
+                }
+              ]
+            }
+          });
+          return;
+        } else if (method === 'ping' || method === 'notifications/initialized') {
+          res.json({ jsonrpc: '2.0', id: id ?? 1, result: {} });
+          return;
+        }
+      }
+
+      res.status(400).json({ error: 'Active SSE connection session not found' });
     });
 
     app.listen(port, () => {

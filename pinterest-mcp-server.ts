@@ -881,6 +881,12 @@ export class PinterestMcpServer {
     app.use(cors());
     app.use(express.json());
 
+    // Request logging middleware
+    app.use((req: Request, res: Response, next: NextFunction) => {
+      console.log(`[HTTP Request] ${req.method} ${req.originalUrl} - User-Agent: ${req.headers['user-agent'] || 'none'}`);
+      next();
+    });
+
     // Public health check endpoints for Render, Kubernetes, and Remote MCP gateways
     app.get(['/', '/health', '/ping'], (req: Request, res: Response) => {
       const memory = process.memoryUsage();

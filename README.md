@@ -174,3 +174,5 @@ Or edit your Cursor MCP config file (`~/.cursor/mcp.json`):
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+<!-- Deployed: 2026-07-29 -->

@@ -1243,12 +1243,13 @@ export class PinterestMcpServer {
 
     // Unified MCP Endpoint (ChatGPT Apps SDK & Spec Compliant)
     app.get(['/mcp', '/sse'], (req: Request, res: Response, next: NextFunction) => {
-      res.setHeader('X-Accel-Buffering', 'no');
-      res.setHeader('Cache-Control', 'no-cache, no-transform');
-      res.setHeader('Connection', 'keep-alive');
-      res.flushHeaders?.();
-
       this.authenticateMiddleware(req, res, () => {
+        // Set SSE headers AFTER auth — must happen before SSEServerTransport.start() writes them
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+
         const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
         const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'pinterest-mcp-server-62kx.onrender.com';
         const baseUrl = `${protocol}://${host}`;
@@ -1292,7 +1293,7 @@ export class PinterestMcpServer {
             id: id ?? 1,
             result: {
               protocolVersion: '2024-11-05',
-              capabilities: { tools: {} },
+              capabilities: { tools: {}, resources: {} },
               serverInfo: { name: 'pinterest-mcp-server', version: '1.2.0' }
             }
           });

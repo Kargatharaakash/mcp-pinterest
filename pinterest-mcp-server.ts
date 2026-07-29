@@ -135,6 +135,7 @@ export class PinterestMcpServer {
   private server: Server;
   private scraper: PinterestScraper;
   private sseTransports: Map<string, SSEServerTransport> = new Map();
+  private lastSearchResults: Array<any> = [];
 
   constructor() {
     this.server = new Server(
@@ -289,13 +290,13 @@ export class PinterestMcpServer {
             required: ['images'],
             _meta: {
               ui: {
-                resourceUri: 'ui://pinterest-mcp-server/gallery.html',
+                resourceUri: 'ui://pinterest-mcp-server/gallery-v2.html',
               },
             },
           },
           _meta: {
             ui: {
-              resourceUri: 'ui://pinterest-mcp-server/gallery.html',
+              resourceUri: 'ui://pinterest-mcp-server/gallery-v2.html',
             },
           },
         }
@@ -306,7 +307,7 @@ export class PinterestMcpServer {
     this.server.setRequestHandler(ListResourcesRequestSchema, async () => ({
       resources: [
         {
-          uri: 'ui://pinterest-mcp-server/gallery.html',
+          uri: 'ui://pinterest-mcp-server/gallery-v2.html',
           name: 'Pinterest Image Gallery',
           description: 'Interactive Pinterest image gallery rendered as an iframe inside ChatGPT',
           mimeType: 'text/html;profile=mcp-app',
@@ -316,7 +317,7 @@ export class PinterestMcpServer {
 
     // MCP Apps: Serve the gallery HTML resource
     this.server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
-      if (request.params.uri !== 'ui://pinterest-mcp-server/gallery.html') {
+      if (request.params.uri !== 'ui://pinterest-mcp-server/gallery-v2.html') {
         throw new McpError(ErrorCode.InvalidRequest, `Unknown resource: ${request.params.uri}`);
       }
 
@@ -484,7 +485,7 @@ export class PinterestMcpServer {
       return {
         contents: [
           {
-            uri: 'ui://pinterest-mcp-server/gallery.html',
+            uri: 'ui://pinterest-mcp-server/gallery-v2.html',
             mimeType: 'text/html;profile=mcp-app',
             text: galleryHtml,
             _meta: {
@@ -758,6 +759,8 @@ export class PinterestMcpServer {
         pinLink: item.pinLink,
       }));
 
+      this.lastSearchResults = structuredImages;
+
       return {
         structuredContent: {
           keyword,
@@ -783,7 +786,8 @@ export class PinterestMcpServer {
    * Handle render_pinterest_gallery — returns MCP Apps UI resource for iframe rendering in ChatGPT
    */
   private async handleRenderPinterestGallery(args: any) {
-    const images = Array.isArray(args?.images) ? args.images : [];
+    const passedImages = Array.isArray(args?.images) ? args.images : [];
+    const images = passedImages.length > 0 ? passedImages : this.lastSearchResults;
     const keyword = args?.keyword || 'Pinterest';
 
     return {
@@ -800,7 +804,7 @@ export class PinterestMcpServer {
       ],
       _meta: {
         ui: {
-          resourceUri: 'ui://pinterest-mcp-server/gallery.html',
+          resourceUri: 'ui://pinterest-mcp-server/gallery-v2.html',
         },
       },
     };
@@ -1392,7 +1396,7 @@ export class PinterestMcpServer {
                   },
                   _meta: {
                     ui: {
-                      resourceUri: 'ui://pinterest-mcp-server/gallery.html'
+                      resourceUri: 'ui://pinterest-mcp-server/gallery-v2.html'
                     }
                   }
                 }
@@ -1424,7 +1428,7 @@ export class PinterestMcpServer {
             result: {
               resources: [
                 {
-                  uri: 'ui://pinterest-mcp-server/gallery.html',
+                  uri: 'ui://pinterest-mcp-server/gallery-v2.html',
                   name: 'Pinterest Image Gallery',
                   description: 'Interactive Pinterest image gallery rendered as an iframe inside ChatGPT',
                   mimeType: 'text/html;profile=mcp-app',
@@ -1436,14 +1440,14 @@ export class PinterestMcpServer {
         } else if (method === 'resources/read') {
           // Serve the gallery HTML as a ui:// resource for MCP Apps iframe rendering
           const uri = params?.uri;
-          if (uri === 'ui://pinterest-mcp-server/gallery.html') {
+          if (uri === 'ui://pinterest-mcp-server/gallery-v2.html') {
             const galleryHtml = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Pinterest Gallery</title><style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#0f0f0f;color:#fff;padding:16px}#header{margin-bottom:16px}#keyword{font-size:14px;color:#aaa;margin-bottom:4px}h1{font-size:20px;font-weight:700}#gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}.card{border-radius:12px;overflow:hidden;background:#1a1a1a;border:1px solid #2a2a2a;transition:transform .2s ease,box-shadow .2s ease}.card:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(0,0,0,.6)}.card img{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;background:#222}.card-footer{padding:8px 10px;display:flex;justify-content:space-between;align-items:center}.card-title{font-size:11px;color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1}.pin-link{font-size:11px;color:#e60023;text-decoration:none;margin-left:6px;flex-shrink:0;font-weight:600}.spinner{text-align:center;padding:48px;color:#888;font-size:14px}</style></head><body><div id="header"><div id="keyword">Pinterest Search Results</div><h1>Image Gallery</h1></div><div id="gallery"><div class="spinner">Loading images...</div></div><script>const gallery=document.getElementById('gallery');const keywordEl=document.getElementById('keyword');const h1=document.querySelector('h1');function renderGallery(images,keyword){if(!images||!Array.isArray(images)||images.length===0){gallery.innerHTML='<div style="text-align:center;padding:48px;color:#666">No images found.</div>';return}if(keyword){keywordEl.textContent='Pinterest: '+keyword;h1.textContent=keyword+' \u2014 Image Gallery'}gallery.innerHTML=images.map((img,i)=>{const title=img.title||('Design '+(i+1));const src=img.proxyUrl||img.directUrl||'';const pin=img.pinLink||img.directUrl||'#';return \`<div class="card"><img src="\${src}" alt="\${title}" loading="lazy" onerror="this.style.background='#333'"><div class="card-footer"><span class="card-title">\${title}</span><a class="pin-link" href="\${pin}" target="_blank" rel="noopener">Pin</a></div></div>\`}).join('')}function handleData(data){if(!data)return;const sc=data.structuredContent||(data.params&&data.params.structuredContent)||data.params||data;const images=sc.images||data.images;const keyword=sc.keyword||data.keyword;if(images&&Array.isArray(images)){renderGallery(images,keyword)}}if(window.openai){if(window.openai.toolOutput)handleData(window.openai.toolOutput);else if(window.openai.toolInput)handleData(window.openai.toolInput)}window.addEventListener('message',function(event){const msg=event.data;if(!msg)return;if(msg.method==='ui/notifications/tool-result'||msg.method==='ui/notifications/tool-input'){handleData(msg.params)}else if(msg.jsonrpc==='2.0'&&msg.result){handleData(msg.result)}else if(msg.images||(msg.structuredContent&&msg.structuredContent.images)){handleData(msg)}},{passive:true});try{window.parent.postMessage({jsonrpc:'2.0',method:'ui/initialize',id:1,params:{}},'*')}catch(e){}<\/script></body></html>`;
             res.json({
               jsonrpc: '2.0',
               id: id ?? 1,
               result: {
                 contents: [{
-                  uri: 'ui://pinterest-mcp-server/gallery.html',
+                  uri: 'ui://pinterest-mcp-server/gallery-v2.html',
                   mimeType: 'text/html;profile=mcp-app',
                   text: galleryHtml
                 }]

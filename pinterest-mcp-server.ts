@@ -903,11 +903,10 @@ export class PinterestMcpServer {
     app.get('/sse', (req: Request, res: Response, next: NextFunction) => {
       this.authenticateMiddleware(req, res, () => {
         const transport = new SSEServerTransport('/messages', res);
-        const sessionId = Math.random().toString(36).substring(2, 15);
-        this.sseTransports.set(sessionId, transport);
+        this.sseTransports.set(transport.sessionId, transport);
         
         req.on('close', () => {
-          this.sseTransports.delete(sessionId);
+          this.sseTransports.delete(transport.sessionId);
         });
 
         this.server.connect(transport);

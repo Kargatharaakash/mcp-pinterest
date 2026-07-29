@@ -264,23 +264,7 @@ export class PinterestMcpServer {
 
     this.server.setRequestHandler(CallToolRequestSchema, async (request: CallToolRequest) => {
       try {
-        switch (request.params.name) {
-          case 'pinterest_health_check':
-            return await this.handlePinterestHealthCheck();
-          case 'pinterest_search':
-            return await this.handlePinterestSearch(request.params.args || request.params.arguments);
-          case 'pinterest_get_image_info':
-            return await this.handlePinterestGetImageInfo(request.params.args || request.params.arguments);
-          case 'pinterest_search_and_download':
-            return await this.handlePinterestSearchAndDownload(request.params.args || request.params.arguments);
-          case 'pinterest_get_similar_pins':
-            return await this.handlePinterestGetSimilarPins(request.params.args || request.params.arguments);
-          default:
-            throw new McpError(
-              ErrorCode.MethodNotFound,
-              `Unknown tool: ${request.params.name}`
-            );
-        }
+        return await this.executeToolCall(request.params.name, request.params.arguments || request.params.args);
       } catch (error: any) {
         console.error(`[Tool call error] ${request.params.name}:`, error);
         throw new McpError(
@@ -289,6 +273,29 @@ export class PinterestMcpServer {
         );
       }
     });
+  }
+
+  /**
+   * Execute tool call by name
+   */
+  private async executeToolCall(name: string, args: any) {
+    switch (name) {
+      case 'pinterest_health_check':
+        return await this.handlePinterestHealthCheck();
+      case 'pinterest_search':
+        return await this.handlePinterestSearch(args);
+      case 'pinterest_get_image_info':
+        return await this.handlePinterestGetImageInfo(args);
+      case 'pinterest_search_and_download':
+        return await this.handlePinterestSearchAndDownload(args);
+      case 'pinterest_get_similar_pins':
+        return await this.handlePinterestGetSimilarPins(args);
+      default:
+        throw new McpError(
+          ErrorCode.MethodNotFound,
+          `Unknown tool: ${name}`
+        );
+    }
   }
 
   /**
@@ -949,7 +956,7 @@ export class PinterestMcpServer {
 
       // Stateless HTTP JSON-RPC fallback for direct POST /mcp probes
       if (req.body && req.body.jsonrpc === '2.0') {
-        const { method, id } = req.body;
+        const { method, id, params } = req.body;
         if (method === 'initialize') {
           res.json({
             jsonrpc: '2.0',
@@ -1022,6 +1029,22 @@ export class PinterestMcpServer {
               ]
             }
           });
+          return;
+        } else if (method === 'tools/call') {
+          try {
+            const toolResult = await this.executeToolCall(params?.name, params?.arguments || params?.args);
+            res.json({
+              jsonrpc: '2.0',
+              id: id ?? 1,
+              result: toolResult
+            });
+          } catch (err: any) {
+            res.json({
+              jsonrpc: '2.0',
+              id: id ?? 1,
+              error: { code: -32603, message: err.message }
+            });
+          }
           return;
         } else if (method === 'ping' || method === 'notifications/initialized') {
           res.json({ jsonrpc: '2.0', id: id ?? 1, result: {} });

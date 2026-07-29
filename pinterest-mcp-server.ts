@@ -454,12 +454,14 @@ export class PinterestMcpServer {
       
       validResults.forEach((result: any, index: number) => {
         const title = result.title && result.title !== 'Unknown Title' ? result.title : `Design ${index + 1}`;
-        const imageMarkdown = `![${title}](${result.image_url})`;
-        const pinLink = result.link || result.original_page || result.image_url;
+        const rawImageUrl = this.scraper.transformImageUrl(result.image_url);
+        const proxiedImageUrl = `https://pinterest-mcp-server-62kx.onrender.com/image-proxy?url=${encodeURIComponent(rawImageUrl)}`;
+        const imageMarkdown = `![${title}](${proxiedImageUrl})`;
+        const pinLink = result.link || result.original_page || rawImageUrl;
         
         contentItems.push({
           type: 'text',
-          text: `#### ${index + 1}. ${title}\n${imageMarkdown}\n[View Image](${result.image_url}) | [View Pin](${pinLink})\n---`
+          text: `#### ${index + 1}. ${title}\n${imageMarkdown}\n[View Direct Image](${rawImageUrl}) | [View Pin](${pinLink})\n---`
         });
       });
       
@@ -766,12 +768,13 @@ export class PinterestMcpServer {
 
       results.forEach((item: any, index: number) => {
         const title = item.title && item.title !== 'Unknown Title' ? item.title : `Recommendation ${index + 1}`;
-        const imageUrl = this.scraper.transformImageUrl(item.image_url);
-        const imageMarkdown = `![${title}](${imageUrl})`;
+        const rawImageUrl = this.scraper.transformImageUrl(item.image_url);
+        const proxiedImageUrl = `https://pinterest-mcp-server-62kx.onrender.com/image-proxy?url=${encodeURIComponent(rawImageUrl)}`;
+        const imageMarkdown = `![${title}](${proxiedImageUrl})`;
         
         contentItems.push({
           type: 'text',
-          text: `#### ${index + 1}. ${title}\n${imageMarkdown}\n[View Image](${imageUrl}) | [View Pin](${item.link || imageUrl})\n---`
+          text: `#### ${index + 1}. ${title}\n${imageMarkdown}\n[View Direct Image](${rawImageUrl}) | [View Pin](${item.link || rawImageUrl})\n---`
         });
       });
 
@@ -848,6 +851,41 @@ export class PinterestMcpServer {
     app.use((req: Request, res: Response, next: NextFunction) => {
       console.log(`[HTTP Request] ${req.method} ${req.originalUrl} - User-Agent: ${req.headers['user-agent'] || 'none'}`);
       next();
+    });
+
+    // Public Image Proxy Endpoint for ChatGPT & Web Apps (Bypasses Referer & AccessDenied blocks)
+    app.get('/image-proxy', async (req: Request, res: Response) => {
+      try {
+        const imageUrl = req.query.url as string;
+        if (!imageUrl || (!imageUrl.startsWith('http://') && !imageUrl.startsWith('https://'))) {
+          res.status(400).send('Invalid or missing image URL parameter');
+          return;
+        }
+
+        const response = await fetch(imageUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept': 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
+            'Referer': 'https://www.pinterest.com/'
+          }
+        });
+
+        if (!response.ok) {
+          res.status(response.status).send(`Failed to fetch image: ${response.statusText}`);
+          return;
+        }
+
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        res.setHeader('Content-Type', contentType);
+        res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
+        res.setHeader('Access-Control-Allow-Origin', '*');
+
+        const arrayBuffer = await response.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        res.send(buffer);
+      } catch (error: any) {
+        res.status(500).send(`Image proxy error: ${error.message}`);
+      }
     });
 
     // Public health check endpoints for Render, Kubernetes, and Remote MCP gateways

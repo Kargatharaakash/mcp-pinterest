@@ -907,6 +907,11 @@ export class PinterestMcpServer {
 
     // Protected SSE Endpoint
     app.get('/sse', (req: Request, res: Response, next: NextFunction) => {
+      res.setHeader('X-Accel-Buffering', 'no');
+      res.setHeader('Cache-Control', 'no-cache, no-transform');
+      res.setHeader('Connection', 'keep-alive');
+      res.flushHeaders?.();
+
       this.authenticateMiddleware(req, res, () => {
         const transport = new SSEServerTransport('/messages', res);
         this.sseTransports.set(transport.sessionId, transport);

@@ -348,6 +348,30 @@ export class PinterestMcpServer {
     };
   }
 
+  /**
+   * Helper to fetch image binary and convert to base64 for native MCP type: "image" rendering
+   */
+  private async fetchImageAsBase64(url: string): Promise<{ data: string; mimeType: string } | null> {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          'Referer': 'https://www.pinterest.com/'
+        }
+      });
+      if (!response.ok) return null;
+      const contentType = response.headers.get('content-type') || 'image/jpeg';
+      const arrayBuffer = await response.arrayBuffer();
+      const base64 = Buffer.from(arrayBuffer).toString('base64');
+      return {
+        data: base64,
+        mimeType: contentType.startsWith('image/') ? contentType : 'image/jpeg'
+      };
+    } catch (e) {
+      return null;
+    }
+  }
+
   private async handlePinterestSearch(args: any) {
     try {
       let keyword = '';
@@ -445,25 +469,39 @@ export class PinterestMcpServer {
         }
       }
       
-      const contentItems: Array<{type: string; text: string}> = [
+      const contentItems: Array<any> = [
         {
           type: 'text',
           text: `Found ${validResults.length} images related to "${keyword}" on Pinterest:`
         }
       ];
       
-      validResults.forEach((result: any, index: number) => {
+      for (let index = 0; index < validResults.length; index++) {
+        const result = validResults[index];
         const title = result.title && result.title !== 'Unknown Title' ? result.title : `Design ${index + 1}`;
         const rawImageUrl = this.scraper.transformImageUrl(result.image_url);
         const proxiedImageUrl = `https://pinterest-mcp-server-62kx.onrender.com/image-proxy?url=${encodeURIComponent(rawImageUrl)}`;
-        const imageMarkdown = `![${title}](${proxiedImageUrl})`;
         const pinLink = result.link || result.original_page || rawImageUrl;
         
+        // Fetch base64 for native MCP type: "image" rendering in ChatGPT UI
+        const imageBase64 = await this.fetchImageAsBase64(rawImageUrl);
+        if (imageBase64) {
+          contentItems.push({
+            type: 'image',
+            data: imageBase64.data,
+            mimeType: imageBase64.mimeType
+          });
+        }
+
         contentItems.push({
           type: 'text',
-          text: `#### ${index + 1}. ${title}\n${imageMarkdown}\n[View Direct Image](${rawImageUrl}) | [View Pin](${pinLink})\n---`
+          text: `#### ${index + 1}. ${title}\n![${title}](${proxiedImageUrl})\n[View Direct Image](${rawImageUrl}) | [View Pin](${pinLink})\n---`
         });
-      });
+      }
+      
+      return {
+        content: contentItems
+      };
       
       return {
         content: contentItems
@@ -759,24 +797,33 @@ export class PinterestMcpServer {
         };
       }
 
-      const contentItems: Array<{type: string; text: string}> = [
+      const contentItems: Array<any> = [
         {
           type: 'text',
           text: `Found ${results.length} related visual design recommendations for pin: "${pinUrlOrId}"`
         }
       ];
 
-      results.forEach((item: any, index: number) => {
+      for (let index = 0; index < results.length; index++) {
+        const item = results[index];
         const title = item.title && item.title !== 'Unknown Title' ? item.title : `Recommendation ${index + 1}`;
         const rawImageUrl = this.scraper.transformImageUrl(item.image_url);
         const proxiedImageUrl = `https://pinterest-mcp-server-62kx.onrender.com/image-proxy?url=${encodeURIComponent(rawImageUrl)}`;
-        const imageMarkdown = `![${title}](${proxiedImageUrl})`;
-        
+
+        const imageBase64 = await this.fetchImageAsBase64(rawImageUrl);
+        if (imageBase64) {
+          contentItems.push({
+            type: 'image',
+            data: imageBase64.data,
+            mimeType: imageBase64.mimeType
+          });
+        }
+
         contentItems.push({
           type: 'text',
-          text: `#### ${index + 1}. ${title}\n${imageMarkdown}\n[View Direct Image](${rawImageUrl}) | [View Pin](${item.link || rawImageUrl})\n---`
+          text: `#### ${index + 1}. ${title}\n![${title}](${proxiedImageUrl})\n[View Direct Image](${rawImageUrl}) | [View Pin](${item.link || rawImageUrl})\n---`
         });
-      });
+      }
 
       return {
         content: contentItems

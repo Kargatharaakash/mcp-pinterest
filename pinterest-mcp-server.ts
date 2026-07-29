@@ -1354,11 +1354,41 @@ export class PinterestMcpServer {
                     },
                     required: ['keyword']
                   }
+                },
+                {
+                  name: 'render_pinterest_gallery',
+                  description: 'Render a visual image gallery widget inside ChatGPT. Always call pinterest_search first, then pass its images array here.',
+                  inputSchema: {
+                    type: 'object',
+                    properties: {
+                      keyword: { type: 'string', description: 'The search keyword used (for display)' },
+                      images: {
+                        type: 'array',
+                        description: 'Array of image objects from pinterest_search structuredContent.images',
+                        items: {
+                          type: 'object',
+                          properties: {
+                            title: { type: 'string' },
+                            proxyUrl: { type: 'string' },
+                            directUrl: { type: 'string' },
+                            pinLink: { type: 'string' }
+                          }
+                        }
+                      }
+                    },
+                    required: ['images']
+                  },
+                  _meta: {
+                    ui: {
+                      resourceUri: 'ui://pinterest-mcp-server/gallery.html'
+                    }
+                  }
                 }
               ]
             }
           });
           return;
+
         } else if (method === 'tools/call') {
           try {
             const toolResult = await this.executeToolCall(params?.name, params?.arguments || params?.args);

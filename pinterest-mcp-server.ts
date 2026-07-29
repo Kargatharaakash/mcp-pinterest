@@ -913,7 +913,14 @@ export class PinterestMcpServer {
       res.flushHeaders?.();
 
       this.authenticateMiddleware(req, res, () => {
-        const transport = new SSEServerTransport('/messages', res);
+        const protocol = (req.headers['x-forwarded-proto'] as string) || req.protocol || 'https';
+        const host = (req.headers['x-forwarded-host'] as string) || req.headers.host || 'pinterest-mcp-server-62kx.onrender.com';
+        const baseUrl = `${protocol}://${host}`;
+        
+        const apiKeyQuery = req.query.api_key ? `?api_key=${encodeURIComponent(req.query.api_key as string)}` : '';
+        const messagesEndpoint = `${baseUrl}/messages${apiKeyQuery}`;
+
+        const transport = new SSEServerTransport(messagesEndpoint, res);
         this.sseTransports.set(transport.sessionId, transport);
         
         req.on('close', () => {

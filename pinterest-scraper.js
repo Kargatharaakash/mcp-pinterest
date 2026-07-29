@@ -209,12 +209,12 @@ class PinterestScraper {
             .map(img => {
               let imageUrl = img.src;
               if (imageUrl.match(/\/\d+x\d*\//)) {
-                imageUrl = imageUrl.replace(/\/\d+x\d*\//, '/originals/');
+                imageUrl = imageUrl.replace(/\/\d+x\d*\//, '/736x/');
               }
-              const thumbnailPatterns = ['/60x60/', '/236x/', '/474x/', '/736x/'];
+              const thumbnailPatterns = ['/60x60/', '/236x/', '/474x/'];
               for (const pattern of thumbnailPatterns) {
                 if (imageUrl.includes(pattern)) {
-                  imageUrl = imageUrl.replace(pattern, '/originals/');
+                  imageUrl = imageUrl.replace(pattern, '/736x/');
                   break;
                 }
               }
@@ -240,12 +240,16 @@ class PinterestScraper {
 
       for (const item of validResults) {
         if (uniqueResults.length >= limit) break;
-        if (item && typeof item === 'object' && item.image_url && !urlSet.has(item.image_url)) {
-          urlSet.add(item.image_url);
-          uniqueResults.push({
-            ...item,
-            source: item.source || 'pinterest'
-          });
+        if (item && typeof item === 'object' && item.image_url) {
+          const transformedUrl = this.transformImageUrl(item.image_url);
+          if (!urlSet.has(transformedUrl)) {
+            urlSet.add(transformedUrl);
+            uniqueResults.push({
+              ...item,
+              image_url: transformedUrl,
+              source: item.source || 'pinterest'
+            });
+          }
         }
       }
 
@@ -385,12 +389,12 @@ class PinterestScraper {
             .map(img => {
               let imageUrl = img.src;
               if (imageUrl.match(/\/\d+x\d*\//)) {
-                imageUrl = imageUrl.replace(/\/\d+x\d*\//, '/originals/');
+                imageUrl = imageUrl.replace(/\/\d+x\d*\//, '/736x/');
               }
-              const thumbnailPatterns = ['/60x60/', '/236x/', '/474x/', '/736x/'];
+              const thumbnailPatterns = ['/60x60/', '/236x/', '/474x/'];
               for (const pattern of thumbnailPatterns) {
                 if (imageUrl.includes(pattern)) {
-                  imageUrl = imageUrl.replace(pattern, '/originals/');
+                  imageUrl = imageUrl.replace(pattern, '/736x/');
                   break;
                 }
               }

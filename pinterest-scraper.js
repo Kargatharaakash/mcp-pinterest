@@ -182,7 +182,7 @@ class PinterestScraper {
       }
 
       try {
-        await page.waitForSelector('div[data-test-id="pin"], img[src*="pinimg.com"]', { timeout: 5000 });
+        await page.waitForSelector('img', { timeout: 3000 });
       } catch (err) {}
 
       if (signal && signal.aborted) {
@@ -190,7 +190,7 @@ class PinterestScraper {
       }
 
       try {
-        const scrollDistance = Math.max(limit * 200, 800);
+        const scrollDistance = Math.max(limit * 150, 400);
         await this.autoScroll(page, scrollDistance, signal);
       } catch (err) {
         if (signal && signal.aborted) throw new Error('Operation cancelled');
@@ -203,28 +203,45 @@ class PinterestScraper {
       let results = [];
       try {
         results = await page.evaluate(() => {
+          const items = [];
           const images = Array.from(document.querySelectorAll('img'));
-          return images
-            .filter(img => img.src && img.src.includes('pinimg.com'))
-            .map(img => {
-              let imageUrl = img.src;
-              if (imageUrl.match(/\/\d+x\d*\//)) {
-                imageUrl = imageUrl.replace(/\/\d+x\d*\//, '/736x/');
-              }
-              const thumbnailPatterns = ['/60x60/', '/236x/', '/474x/'];
-              for (const pattern of thumbnailPatterns) {
-                if (imageUrl.includes(pattern)) {
-                  imageUrl = imageUrl.replace(pattern, '/736x/');
-                  break;
-                }
-              }
-              return {
-                title: img.alt || 'Unknown Title',
-                image_url: imageUrl,
-                link: img.closest('a') ? img.closest('a').href : imageUrl,
-                source: 'pinterest'
-              };
+          const seenUrls = new Set();
+
+          for (const img of images) {
+            const rawSrc = img.src || img.getAttribute('data-src') || img.getAttribute('srcset') || '';
+            if (!rawSrc || !rawSrc.includes('pinimg.com')) continue;
+
+            let imageUrl = rawSrc;
+            const srcsetMatches = rawSrc.match(/https:\/\/i\.pinimg\.com\/[^\s,]+/g);
+            if (srcsetMatches && srcsetMatches.length > 0) {
+              imageUrl = srcsetMatches[srcsetMatches.length - 1];
+            }
+
+            imageUrl = imageUrl.replace(/\/(236x|474x|60x60|170x)\//, '/736x/');
+            if (!imageUrl.includes('/736x/') && imageUrl.match(/\/\d+x\d*\//)) {
+              imageUrl = imageUrl.replace(/\/\d+x\d*\//, '/736x/');
+            }
+
+            if (seenUrls.has(imageUrl)) continue;
+            seenUrls.add(imageUrl);
+
+            const card = img.closest('div[data-test-id="pin"]') || img.closest('a') || img.parentElement;
+            const anchor = card ? (card.tagName === 'A' ? card : card.querySelector('a[href*="/pin/"]')) : null;
+            const link = anchor && anchor.href ? anchor.href : imageUrl;
+            
+            let title = img.alt || img.getAttribute('title') || '';
+            if (!title || title.trim() === '' || title === 'Unknown Title') {
+              title = 'Pinterest Design';
+            }
+
+            items.push({
+              title: title.trim(),
+              image_url: imageUrl,
+              link: link,
+              source: 'pinterest'
             });
+          }
+          return items;
         }).catch(() => []);
       } catch (err) {
         results = [];
